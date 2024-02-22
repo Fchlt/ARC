@@ -27,3 +27,5 @@ Description of arguments:
 [performMSA]: as a final check, you can perform a multiple sequence alignment of your combined fasta file to identify outliers (optional; default is FALSE)
 [SD]: if the [performMSA] argument was set to TRUE, use this argument to change the stringency for the identification of outliers (higher SD values= lower stringency) (defalut is SD=2)
 (if [performMSA] argument was set to TRUE and this function returns a fasta file, check the sequences on BLASTp)
+
+For training purposes, use the ASV.fa file and the BLASTp hit files provided
