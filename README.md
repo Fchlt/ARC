@@ -7,7 +7,7 @@ Description of arguments:
 [target]: the name of your target gene (optional; default is NULL)
 [expected.length]: the expected length of the amino-acid sequences (optional; default is NULL)
 [plus and minus]: used to search for a range of length rather than an exact length (plus/minus the expected length) (optional; default is 0 for both)
-[ANTISENS]: seqrch for ORF in the reverse DNA strand? (optional; default is FALSE)
+[ANTISENS]: search for ORF in the reverse DNA strand? (optional; default is FALSE)
 
 The second function (check.BLASTp) is used to recover sequences that don't have the expected length but do match the expected protein on BLASTp
 This function is ran only if the [expected.length] argument was not set to 'NULL' in the QC function
