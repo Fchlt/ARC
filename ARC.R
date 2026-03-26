@@ -1,4 +1,4 @@
-ORF.finder=function(sequences,target=NULL,expected.length=NULL,plus=0,minus=0,ANTISENS=F){
+ORF.finder=function(sequences,target=NULL,expected.length=NULL,plus=0,minus=0,ANTISENS=F,preferred=NULL,verbose=F){
   T0=Sys.time()
   
   require(seqinr)
@@ -12,7 +12,7 @@ ORF.finder=function(sequences,target=NULL,expected.length=NULL,plus=0,minus=0,AN
     translation.table=NULL
     for (j in 1:length(frames)){
       if(j<4){S='F'}else{S='R'}
-      AA=seqinr::translate(sequences[[i]], frame = frames[j], sens = S)
+      AA=seqinr::translate(unlist(strsplit(as.character(sequences[[i]]),split='')), frame = frames[j], sens = S)
       
       
       if(AA[length(AA)]=='*'){AA=AA[1:(length(AA)-1)]}
@@ -25,49 +25,44 @@ ORF.finder=function(sequences,target=NULL,expected.length=NULL,plus=0,minus=0,AN
       )
       if(j==1){translation.table=tmp}else{translation.table=rbind(translation.table,tmp)}
     }
-
+    
     Best.AA=translation.table[translation.table$Stop=='GO',]
-
-    if(nrow(Best.AA)==0){write.fasta(sequences = sequences[i], names = names(sequences)[i], file.out =  paste(target,"Non ORF DNA.fasta",sep=' '), open="a",nbchar = length(sequences[[i]]))}
-
+    
+    if(!is.null(preferred)){
+      if(preferred=='forward'){if('F'%in%Best.AA$Sens){Best.AA=Best.AA[Best.AA$Sens=='F',]}}
+      if(preferred=='reverse'){if('R'%in%Best.AA$Sens){Best.AA=Best.AA[Best.AA$Sens=='R',]}}
+    }
+    
+    if(nrow(Best.AA)==0){writeXStringSet(sequences[i], filepath =  paste(target,"Non ORF DNA.fasta",sep=' '),append = T )}
+    
     if(nrow(Best.AA)>=1){
       
       for(n in 1:nrow(Best.AA)){
-        AA=seqinr::translate(sequences[[i]], frame = Best.AA$Frame[n], sens = Best.AA$Sens[n])
+        AA=seqinr::translate(unlist(strsplit(as.character(sequences[[i]]),split='')), frame = Best.AA$Frame[n], sens = Best.AA$Sens[n])
         if(!is.null(expected.length)){
           if(between(length(AA),min(Range),max(Range))){
-            write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,sep='_')), file.out =  paste(target,"ORF AA expected length.fasta",sep=' '), open="a",nbchar = length(AA))
-            write.fasta(sequences = toupper(sequences[[i]]), names = names(sequences)[i], file.out =  paste(target,"ORF DNA expected length.fasta",sep=' '), open="a",nbchar = length(sequences[[i]]))
+            write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,Best.AA$Sens[n],sep='_')), file.out =  paste(target,"ORF AA expected length.fasta",sep=' '), open="a",nbchar = length(AA))
+            #only print the reverse complement ORF if no ORF has been found in the sens frame
+            if(Best.AA$Sens[n]=='R'){sequences[i]=reverseComplement(sequences[i]);Sens='ReverseComplement'}else{Sens=NULL}
+            #write.fasta(sequences = toupper(sequences[[i]]), names = names(sequences)[i], file.out =  paste(paste(target,Sens,sep=''),"ORF DNA expected length.fasta",sep=' '), open="a",nbchar = length(sequences[[i]]))
+            writeXStringSet(sequences[i],  filepath =  paste(paste(target,Sens,sep=''),"ORF DNA expected length.fasta",sep=' '), append = T )
           }else{
-            write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,sep='_')), file.out =  paste(target,"ORF AA non expected length.fasta",sep=' '), open="a",nbchar = length(AA))
-            write.fasta(sequences = toupper(sequences[[i]]), names = names(sequences)[i], file.out =  paste(target,"ORF DNA non expected length.fasta",sep=' '), open="a",nbchar = length(sequences[[i]]))
+            write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,Best.AA$Sens[n],sep='_')), file.out =  paste(target,"ORF AA non expected length.fasta",sep=' '), open="a",nbchar = length(AA))
+            #only print the reverse complement ORF if no ORF has been found in the sens frame
+            if(Best.AA$Sens[n]=='R'){sequences[i]=reverseComplement(sequences[i]);Sens='ReverseComplement'}else{Sens=NULL}
+            writeXStringSet(sequences[i], filepath =  paste(paste(target,Sens,sep=''),"ORF DNA non expected length.fasta",sep=' '), append=T)
           }
         }else{
-          write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,sep='_')), file.out =  paste(target,"ORF AA.fasta",sep=' '), open="a",nbchar = length(AA))
-          write.fasta(sequences = toupper(sequences[[i]]), names = names(sequences)[i], file.out =  paste(target,"ORF DNA.fasta",sep=' '), open="a",nbchar = length(sequences[[i]]))
+          write.fasta(sequences = AA, names = paste(names(sequences)[i],paste('ORF',n,Best.AA$Sens[n],sep='_')), file.out =  paste(target,"ORF AA.fasta",sep=' '), open="a",nbchar = length(AA))
+          #only print the reverse complement ORF if no ORF has been found in the sens frame
+          if(Best.AA$Sens[n]=='R'){sequences[i]=reverseComplement(sequences[i]);Sens='ReverseComplement'}else{Sens=NULL}
+          writeXStringSet(sequences[i], filepath =  paste(paste(target,Sens,sep=''),"ORF DNA.fasta",sep=' '),append=T)
         }
       }
     }
     
-    Checkpoints=as.data.frame(quantile(1:length(sequences)))
-    
-    if(i==round(Checkpoints[,1][2],0)){print(paste('25% sequences processed; Time ellapsed:',round(as.numeric(Sys.time()-T0),2),'secs'))}
-    if(i==round(Checkpoints[,1][3],0)){print(paste('50% sequences processed; Time ellapsed:',round(as.numeric(Sys.time()-T0),2),'secs'))}
-    if(i==round(Checkpoints[,1][4],0)){print(paste('75% sequences processed; Time ellapsed:',round(as.numeric(Sys.time()-T0),2),'secs'))}
-    if(i==round(Checkpoints[,1][5],0)){print(paste('100% sequences processed; Time ellapsed:',round(as.numeric(Sys.time()-T0),2),'secs'))}
-    
+    if(verbose==T){print( paste('Processing: ',round((i/length(sequences))*100,4),'%',sep='') )}
   }
-  
-  if(!is.null(expected.length)){
-    prot.file=seqinr::read.fasta(paste(target,"ORF AA expected length.fasta",sep=' '),seqtype = 'AA')
-  }else{prot.file=seqinr::read.fasta(paste(target,"ORF AA.fasta",sep=' '))}
-  
-  ORFs=c()
-  for(i in 1:length(prot.file)){ORFs[i]=unlist(strsplit(attr(prot.file[[i]],"Annot"),split=' '))[2]}
-  
-  if('ORF_2'%in%ORFs|'ORF_3'%in%ORFs|'ORF_4'%in%ORFs|'ORF_5'%in%ORFs|'ORF_6'%in%ORFs){
-    warning(paste('Multiple ORFs detected for the following sequences: ',paste(names(prot.file)[which(ORFs!='ORF_1')],collapse='; '),sep="\n" ) ) }
-  
 }
 check.BLASTp=function(AA.BLASTed,searchFor,To_exclude=NULL,DNA.BLASTed=NULL,nHits=1,DIR='.'){
   
